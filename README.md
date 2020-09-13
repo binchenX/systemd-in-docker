@@ -5,42 +5,38 @@ Show you how to run systemd in docker using runc hooks and existing projects.
 ## Problem
 
 The best article to understand the problem and challenge of running systemd is
-[this][systemd in container]. The author of the article, Daniel J Walsh, is
-also the author of the `oci-systemd-hook` we'll be using later.
+[this][systemd in container].
 
 ## Solutions
 
 Use [`oci-add-hooks`][oci-add-hooks] to wrap up `runc` and inject the
-[`oci-systemd-hook`][oci-systemd-hook] hook that will do the necessary setup
+[`oci-systemd-hook-go`][oci-systemd-hook-go] hook that will do the necessary setup
 for `systemd` to run in a container. See a more detailed description at the end
 of `Step 3` below.
 
 ## Steps
 
 1. Build and Install `oci-add-hooks` runtime
-2. Build and Install `oci-systemd-hook`
+2. Build and Install `oci-systemd-hook-go` hook.
 3. Config docker with `oci-add-hooks` runtime
 
 ### Step 1. Build and Install `oci-add-hooks`
 
-It is a Go project from awslab. Build and Installation is easy.  Follow the
-[README][oci-add-hooks].
+Go to [oci-add-hooks][oci-add-hooks], build and install it.
 
-Install the library to `/usr/local/sbin/oci-add-hooks`. (You can pick other
-locations, but it's nice to place it in the same location as `runc`)
+Install the binary to `/usr/local/sbin/oci-add-hooks`.
 
-### Step 2. Build and Install `oci-systemd-hook`.
+You can install it other other locations, or leave it in `~/go/bin/`, but this
+is the location we'll be using in the following configration.
 
-This is a C project from Redhat. I have problem installing the depedencey and
-build it on my Ubuntu 19.10. And end up build it in a Fedora container image.
-You can get the binaries using:
+### Step 2. Build and Install `oci-systemd-hook-go`.
 
-```
-mkdir -p /usr/libexec/oci/hooks.d/
-cid=$(docker create binc/oci-systemd-hook:v0.2.0)
-sudo docker cp ${cid}:/release/oci-systemd-hook /usr/libexec/oci/hooks.d/
-docker rm ${cid}
-```
+Go to [oci-systemd-hook-go][oci-systemd-hook-go], build and install it.
+
+Install the binary to `/usr/local/sbin/oci-systemd-hook-go`.
+
+You can install it other other locations, or leave it in `~/go/bin/`, but this
+is the location we'll be using in the following configration.
 
 ### Step 3. Config Docker with `oci-add-hook` runtime
 
@@ -72,9 +68,9 @@ And, the content of `oci-hook-config.json`:
 $cat /etc/docker/oci-hook-config.json
 {
   "hooks": {
-    "prestart": [
+    "createContainer": [
       {
-        "path": "/usr/libexec/oci/hooks.d/oci-systemd-hook"
+        "path": "/usr/local/sbin/oci-systemd-hook-go"
       }
     ]
   }
@@ -87,7 +83,7 @@ the container. After the injection, `oci-add-hooks` will delegate the job of
 actually running the container to `runc`, which is specified in the
 `--runtime-path` for the `oci-add-hooks` args. When it is `runc`'s turn, before
 running the container, it will check the `hooks` section and it see
-`oci-systemd-hook` hook. That hook will be called to set up the stuff necessary
+`oci-systemd-hook-go` hook. That hook will be called to set up the stuff necessary
 for the systemd to run.
 
 ## See It Works
@@ -217,3 +213,4 @@ $
 [systemd in container]: https://developers.redhat.com/blog/2016/09/13/running-systemd-in-a-non-privileged-container/
 [oci-add-hooks]: https://github.com/awslabs/oci-add-hooks
 [oci-systemd-hook]: https://github.com/projectatomic/oci-systemd-hook
+[oci-systemd-hook-go]: https://github.com/pierrchen/oci-systemd-hook-go
